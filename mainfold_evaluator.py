@@ -145,19 +145,32 @@ class GridSearchManifoldEvaluator:
         import os
         os.makedirs(save_path, exist_ok=True)
         for (d_name, m_name), (X_r, y) in self.projections.items():
-            if X_r.shape[1] < 2:
-                print(f"Skipping {d_name} {m_name}: only {X_r.shape[1]} components")
-                continue
-            plt.figure(figsize=(8,6))
             try:
                 y_plot = y.astype(float)
             except (ValueError, TypeError):
                 le = LabelEncoder()
                 y_plot = le.fit_transform(y)
-            scatter = plt.scatter(X_r[:,0], X_r[:,1], c=y_plot, cmap='viridis', alpha=0.7)
-            plt.colorbar(scatter)
-            plt.title(f"{m_name} on {d_name}")
-            plt.xlabel("Component 1")
-            plt.ylabel("Component 2")
-            plt.savefig(f"{save_path}/{d_name}_{m_name}.png")
-            plt.close()
+            
+            if X_r.shape[1] == 1:
+                plt.figure(figsize=(8,6))
+                unique_classes = np.unique(y_plot)
+                for cls in unique_classes:
+                    mask = y_plot == cls
+                    plt.hist(X_r[mask, 0], alpha=0.7, label=f'Class {cls}', bins=20)
+                plt.legend()
+                plt.title(f"{m_name} on {d_name} (1D Projection)")
+                plt.xlabel("Component 1")
+                plt.ylabel("Frequency")
+                plt.savefig(f"{save_path}/{d_name}_{m_name}_1D.png")
+                plt.close()
+            elif X_r.shape[1] >= 2:
+                plt.figure(figsize=(8,6))
+                scatter = plt.scatter(X_r[:,0], X_r[:,1], c=y_plot, cmap='viridis', alpha=0.7)
+                plt.colorbar(scatter)
+                plt.title(f"{m_name} on {d_name}")
+                plt.xlabel("Component 1")
+                plt.ylabel("Component 2")
+                plt.savefig(f"{save_path}/{d_name}_{m_name}.png")
+                plt.close()
+            else:
+                print(f"Skipping {d_name} {m_name}: {X_r.shape[1]} components (not 1 or >=2)")
