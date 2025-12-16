@@ -145,11 +145,23 @@ class GridSearchManifoldEvaluator:
         import os
         os.makedirs(save_path, exist_ok=True)
         for (d_name, m_name), (X_r, y) in self.projections.items():
+            # Use FDA instead of LDA in display names
+            display_name = m_name.replace("LDA", "FDA")
             try:
                 y_plot = y.astype(float)
             except (ValueError, TypeError):
                 le = LabelEncoder()
                 y_plot = le.fit_transform(y)
+            
+            # Get the reducer to check for variance explained
+            reducer = self.best_estimators[(d_name, m_name)].named_steps["reducer"]
+            variance_info = ""
+            if hasattr(reducer, 'explained_variance_ratio_'):
+                ratios = reducer.explained_variance_ratio_
+                if X_r.shape[1] == 1:
+                    variance_info = f" (PC1: {ratios[0]*100:.1f}% variance)"
+                elif X_r.shape[1] >= 2:
+                    variance_info = f"\nPC1: {ratios[0]*100:.1f}%, PC2: {ratios[1]*100:.1f}% variance"
             
             if X_r.shape[1] == 1:
                 plt.figure(figsize=(8,6))
@@ -158,7 +170,7 @@ class GridSearchManifoldEvaluator:
                     mask = y_plot == cls
                     plt.hist(X_r[mask, 0], alpha=0.7, label=f'Class {cls}', bins=20)
                 plt.legend()
-                plt.title(f"{m_name} on {d_name} (1D Projection)")
+                plt.title(f"{display_name} on {d_name} (1D Projection){variance_info}")
                 plt.xlabel("Component 1")
                 plt.ylabel("Frequency")
                 plt.savefig(f"{save_path}/{d_name}_{m_name}_1D.png")
@@ -167,7 +179,7 @@ class GridSearchManifoldEvaluator:
                 plt.figure(figsize=(8,6))
                 scatter = plt.scatter(X_r[:,0], X_r[:,1], c=y_plot, cmap='viridis', alpha=0.7)
                 plt.colorbar(scatter)
-                plt.title(f"{m_name} on {d_name}")
+                plt.title(f"{display_name} on {d_name}{variance_info}")
                 plt.xlabel("Component 1")
                 plt.ylabel("Component 2")
                 plt.savefig(f"{save_path}/{d_name}_{m_name}.png")
